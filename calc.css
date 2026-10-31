@@ -544,7 +544,7 @@
 @container (max-width:96px){
   #pcalc .pc-tabx small{display:none}
 }
-@container (max-width:60px){
+@container (max-width:44px){
   #pcalc .pc-tabx:not(.is-active):not(:hover) .pc-tabx-close{display:none}
 }
 #pcalc .pc-tabx.is-active{min-width:128px}
@@ -587,3 +587,173 @@
   #pcalc .pc-svc-head{flex-wrap:wrap}
   #pcalc .pc-svc-name{min-width:120px}
 }
+
+/* =====================================================================
+   v5.0 — оформление в стиле референса: светлое «стекло», мягкие тени,
+   пастельные градиенты, лёгкая типографика. Логика интерфейса не менялась.
+   ===================================================================== */
+#pcalc{
+  --bg:#f3f4f8;--panel:#ffffff;--glass:rgba(255,255,255,.62);--glass-strong:rgba(255,255,255,.82);
+  --line:#e9ebf1;--ink:#1b1d24;--muted:#8a8f9c;--accent:#2563ff;--accent-soft:#e8efff;--danger:#e5484d;
+  --r:22px;--shadow-sm:0 1px 2px rgba(20,30,60,.04),0 4px 14px rgba(20,30,60,.05);
+  --shadow-md:0 2px 6px rgba(20,30,60,.04),0 12px 32px rgba(20,30,60,.07);
+  font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-weight:400;letter-spacing:-.005em;
+  background:
+    radial-gradient(900px 520px at 78% -8%, rgba(108,140,255,.20), transparent 70%),
+    radial-gradient(760px 480px at 105% 55%, rgba(255,150,190,.13), transparent 70%),
+    radial-gradient(700px 520px at 18% 110%, rgba(140,200,255,.14), transparent 70%),
+    #f3f4f8;
+  background-attachment:fixed;
+}
+
+/* ---------- боковая панель — парящая стеклянная карточка ---------- */
+#pcalc .pc-side{background:transparent;border-right:0;padding:16px 0 16px 16px}
+#pcalc .pc-side-in{top:16px;height:calc(100vh - 32px);min-height:0;max-height:none;padding:16px 14px 14px 16px;
+  background:var(--glass);border:1px solid rgba(255,255,255,.75);border-radius:26px;box-shadow:var(--shadow-md);
+  -webkit-backdrop-filter:blur(22px) saturate(1.2);backdrop-filter:blur(22px) saturate(1.2)}
+#pcalc .pc-resizer{right:-12px}
+#pcalc .pc-logo{font-weight:600;font-size:18px;letter-spacing:-.02em}
+#pcalc .pc-app-ver{background:transparent;color:var(--muted);font-weight:500;padding:0}
+#pcalc .pc-demo{background:rgba(255,236,190,.55);border-radius:14px;color:#7a5600}
+#pcalc .pc-search,#pcalc .pc-stsel{background:#fff;border:0;border-radius:14px;box-shadow:var(--shadow-sm);height:40px}
+#pcalc .pc-stsel{padding:0 10px}
+#pcalc .pc-folder-head{color:var(--muted);font-weight:500;letter-spacing:.03em;border-radius:12px}
+#pcalc .pc-folder-head:hover{background:rgba(255,255,255,.6)}
+#pcalc .pc-folder-inner .pc-folder-head{font-weight:500}
+#pcalc .pc-proj{border-radius:16px;padding:9px 12px 9px 30px}
+#pcalc .pc-proj:hover{background:rgba(255,255,255,.55)}
+#pcalc .pc-proj.is-active{background:#fff;box-shadow:var(--shadow-md)}
+#pcalc .pc-proj.is-sel{background:var(--accent-soft)}
+#pcalc .pc-proj-name{font-weight:500;font-size:14.5px}
+#pcalc .pc-proj-meta{color:var(--muted);font-size:12px}
+#pcalc .pc-ver-tag{background:transparent;color:var(--accent);padding:0;font-weight:600;font-size:12px;margin-right:4px}
+#pcalc .pc-st-txt{font-size:11px;color:#a3a7b2}
+#pcalc .pc-side-foot{border-top:0;padding-top:4px}
+#pcalc .pc-trash-toggle{font-weight:500;border-radius:12px}
+#pcalc .pc-trash-toggle:hover,#pcalc .pc-me:hover{background:rgba(255,255,255,.6)}
+#pcalc .pc-me{font-weight:500;color:var(--ink)}
+#pcalc .pc-selbar2{border:0;border-radius:18px;box-shadow:var(--shadow-md)}
+
+/* ---------- кнопки, поля, чипы ---------- */
+#pcalc .pc-btn{height:40px;padding:0 18px;border-radius:14px;font-weight:500;font-size:14px}
+#pcalc .pc-btn-sm{height:30px;padding:0 10px;font-size:12.5px;border-radius:10px}
+#pcalc .pc-btn-primary{background:linear-gradient(180deg,#3b7bff 0%,#1f5fff 100%);color:#fff;box-shadow:0 6px 18px rgba(37,99,255,.32),inset 0 1px 0 rgba(255,255,255,.25)}
+#pcalc .pc-btn-primary:hover{background:linear-gradient(180deg,#4a86ff 0%,#2a67ff 100%)}
+#pcalc .pc-btn-ghost{background:#fff;box-shadow:var(--shadow-sm)}
+#pcalc .pc-btn-ghost:hover{background:#fbfbfd}
+#pcalc .pc-btn-danger{background:linear-gradient(180deg,#f0595e,#df3f45);box-shadow:0 6px 16px rgba(229,72,77,.28)}
+#pcalc .pc-btn-icon{background:#fff;border-radius:12px;box-shadow:var(--shadow-sm);width:38px;height:38px}
+#pcalc .pc-icon{border-radius:10px}
+#pcalc .pc-head-tools .pc-icon{width:40px;height:40px;border-radius:50%;background:#fff;box-shadow:var(--shadow-sm)}
+#pcalc .pc-field{gap:10px;font-size:14px;color:var(--muted)}
+#pcalc .pc-field input,#pcalc .pc-field select,#pcalc .pc-input,#pcalc .pc-stbtn{height:44px;border:0;border-radius:14px;background:#fff;box-shadow:var(--shadow-sm);padding:0 14px;font-size:14px}
+#pcalc .pc-stbtn{gap:9px}
+#pcalc .pc-chip{height:40px;padding:0 20px;border:0;border-radius:999px;background:#fff;box-shadow:var(--shadow-sm);font-weight:500;font-size:14px}
+#pcalc .pc-chip:hover{background:#fff;box-shadow:var(--shadow-md)}
+#pcalc .pc-chip-add{background:rgba(255,255,255,.55);border:1.5px dashed #c7d3ff;box-shadow:none;color:var(--accent)}
+#pcalc .pc-chip-sm{height:34px;padding:0 14px;font-size:13px}
+#pcalc .pc-tplchip{padding-right:30px}
+
+/* ---------- вкладки и рабочая область ---------- */
+#pcalc .pc-pane{padding:16px 16px 16px 12px;min-height:100vh}
+#pcalc .pc-main.is-split .pc-pane+.pc-pane{border-left:0;padding-left:6px}
+#pcalc .pc-tabbar{background:transparent;border-bottom:0;height:56px;padding:0 6px 0 14px;position:sticky;top:0}
+#pcalc .pc-tabx{height:46px;border-radius:20px 20px 0 0;padding:0 10px 0 22px;background:rgba(255,255,255,.42);border:0;font-weight:500;font-size:15px;color:#6f7482;margin-right:6px}
+#pcalc .pc-tabx:hover{background:rgba(255,255,255,.65)}
+#pcalc .pc-tabx.is-active{background:var(--glass-strong);color:var(--ink);height:50px;margin-bottom:0;box-shadow:none}
+#pcalc .pc-tabx small{font-weight:600}
+#pcalc .pc-main.is-split .pc-pane.is-focus .pc-tabbar{box-shadow:none}
+#pcalc .pc-main.is-split .pc-pane.is-focus .pc-tabx.is-active{box-shadow:inset 0 -2px 0 var(--accent)}
+#pcalc .pc-pane-body{background:var(--glass-strong);border-radius:0 30px 30px 30px;padding:30px 30px 60px;min-height:calc(100vh - 88px);
+  box-shadow:var(--shadow-md);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+#pcalc .pc-burger,#pcalc .pc-tabbar-btn{width:40px;height:40px;border-radius:12px}
+#pcalc .pc-title{font-size:40px;font-weight:500;letter-spacing:-.03em}
+#pcalc .pc-head{gap:12px 14px;margin-bottom:14px}
+#pcalc .pc-head2{margin-bottom:22px}
+#pcalc .pc-status{font-size:12.5px}
+#pcalc .pc-tabs{border-bottom:1px solid var(--line);gap:8px;margin-bottom:22px}
+#pcalc .pc-tab{padding:12px 18px;font-weight:500;font-size:15px;color:#7d8290;border-bottom-width:2px}
+#pcalc .pc-tab.is-active{color:var(--ink);border-color:var(--accent)}
+
+/* ---------- карточки ---------- */
+#pcalc .pc-card{background:rgba(255,255,255,.78);border:0;border-radius:var(--r);padding:22px 24px;margin-bottom:18px;box-shadow:var(--shadow-sm)}
+#pcalc .pc-label{font-size:12.5px;font-weight:600;color:#7d8290;letter-spacing:.04em;margin-bottom:14px}
+#pcalc .pc-hint{color:#8a8f9c;font-weight:400}
+#pcalc .pc-total{color:#7d8290;font-size:14px}
+#pcalc .pc-total b{font-weight:600;font-size:18px}
+#pcalc .pc-svc-name{font-size:21px;font-weight:500;letter-spacing:-.02em}
+#pcalc .pc-svc-total{font-size:19px;font-weight:600}
+#pcalc .pc-svc-num{background:#f4f5f9;border-radius:10px;padding:5px 10px;font-weight:500;color:#5d6270}
+#pcalc .pc-dot{width:14px;height:14px;border-radius:5px}
+
+/* ---------- полосы с градиентами ---------- */
+#pcalc .pc-projbar{background:rgba(244,246,251,.8);border-radius:20px;padding:5px;gap:6px;min-height:76px}
+#pcalc .pc-projbar.is-empty{border:2px dashed #dfe3ec;background:transparent}
+#pcalc .pc-seg{border-radius:16px;padding:12px 18px;box-shadow:0 6px 16px rgba(40,60,120,.12)}
+#pcalc .pc-seg span{font-weight:500;font-size:16px}
+#pcalc .pc-seg small{font-size:13px;opacity:.9}
+#pcalc .pc-svcbar{gap:8px;min-height:68px;margin-bottom:16px}
+#pcalc .pc-lseg{border-radius:14px;padding:10px 20px 10px 16px;box-shadow:0 4px 12px rgba(40,60,120,.07)}
+#pcalc .pc-lseg span{font-weight:500;font-size:15px}
+#pcalc .pc-lseg small{font-size:13px;opacity:.85}
+#pcalc .pc-handle::after{opacity:.35;width:3px;height:22px}
+
+/* ---------- таблица ---------- */
+#pcalc .pc-lines th{font-size:12px;font-weight:600;color:#8a8f9c;padding:8px 6px}
+#pcalc .pc-lines td{border-bottom:1px solid #eef0f4;padding:7px 6px}
+#pcalc .pc-lines input{font-size:15px;height:34px;border-radius:10px}
+#pcalc .pc-lines input:focus{background:#fff;box-shadow:0 0 0 2px rgba(37,99,255,.25);border-color:transparent}
+#pcalc .pc-unit-sel{height:34px;border-radius:12px;background:#fff;box-shadow:var(--shadow-sm);border:0}
+#pcalc .pc-unit{color:#a3a7b2}
+#pcalc .pc-grip{color:#c3c7d1}
+#pcalc .pc-tag{background:#f2f3f7;border-radius:7px}
+#pcalc .pc-add-label{color:var(--muted);font-size:13.5px}
+
+/* ---------- финансы и сравнение ---------- */
+#pcalc .pc-kpi{background:rgba(255,255,255,.85);border:0;border-radius:20px;box-shadow:var(--shadow-sm);padding:16px 18px}
+#pcalc .pc-kpi b{font-size:24px;font-weight:600;letter-spacing:-.02em}
+#pcalc .pc-kpi.is-main{background:linear-gradient(135deg,#2563ff 0%,#6d5bff 100%);box-shadow:0 10px 26px rgba(60,80,255,.3)}
+#pcalc .pc-fbar{height:34px;gap:4px}
+#pcalc .pc-fbar-seg{border-radius:8px}
+#pcalc .pc-fbar-seg:first-child{border-radius:12px 8px 8px 12px}
+#pcalc .pc-fbar-seg:last-child{border-radius:8px 12px 12px 8px}
+#pcalc .pc-fin-table th,#pcalc .pc-cmp th{font-weight:600}
+#pcalc .pc-fin-table td,#pcalc .pc-cmp td{border-bottom-color:#eef0f4}
+#pcalc .pc-seg-toggle{background:rgba(255,255,255,.7);border-radius:14px;box-shadow:var(--shadow-sm)}
+#pcalc .pc-seg-toggle button{border-radius:11px;padding:7px 14px}
+
+/* ---------- карточки последних смет, меню, окна ---------- */
+#pcalc .pc-rcard{border:0;border-radius:22px;box-shadow:var(--shadow-sm);background:rgba(255,255,255,.85);padding:18px 20px}
+#pcalc .pc-rcard:hover{box-shadow:var(--shadow-md)}
+#pcalc .pc-rcard-sum{font-weight:600;font-size:22px}
+#pcalc .pc-ctx,#pcalc .pc-menu{border:0;border-radius:18px;box-shadow:0 18px 50px rgba(20,30,60,.18);padding:8px;background:rgba(255,255,255,.96);
+  -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+#pcalc .pc-ctx button,#pcalc .pc-menu button{border-radius:10px;padding:9px 12px;font-size:13.5px}
+#pcalc .pc-ctx button:hover,#pcalc .pc-menu button:hover{background:#f3f5fa}
+#pcalc .pc-overlay{background:rgba(30,35,55,.28);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+#pcalc .pc-modal{border-radius:24px;padding:26px;box-shadow:0 30px 80px rgba(20,30,60,.25)}
+#pcalc .pc-modal h3{font-weight:600;font-size:19px}
+#pcalc .pc-modal input,#pcalc .pc-modal select{height:44px;border:0;border-radius:14px;background:#f5f6fa;padding:0 14px}
+#pcalc .pc-modal input:focus,#pcalc .pc-modal select:focus{outline:2px solid rgba(37,99,255,.35)}
+#pcalc .pc-presence{border-radius:16px}
+#pcalc .pc-selpop-in{border:0;border-radius:18px}
+
+/* зоны перетаскивания и подсказки — те же, только мягче */
+#pcalc .pc-folder-head.pc-zone,#pcalc .pc-bin.pc-zone{border-radius:12px}
+#pcalc .pc-split-zone{border-radius:28px;top:72px}
+#pcalc .pc-split-zone span{border-radius:16px;box-shadow:var(--shadow-md)}
+
+@container (max-width:760px){
+  #pcalc .pc-pane-body{padding:20px 16px 40px}
+  #pcalc .pc-title{font-size:28px}
+  #pcalc .pc-card{padding:18px 16px}
+}
+@media (max-width:860px){
+  #pcalc .pc-side{padding:0;background:transparent}
+  #pcalc .pc-side-in{top:0;height:100%;border-radius:0 26px 26px 0;background:rgba(255,255,255,.92)}
+  #pcalc .pc-pane{padding:8px}
+  #pcalc .pc-pane-body{border-radius:0 22px 22px 22px}
+}
+#pcalc .is-hatch{box-shadow:inset 0 0 0 1.5px #12b886}
+#pcalc .pc-leg-sw{width:12px;height:12px;border-radius:4px}
+@container (max-width:110px){ #pcalc .pc-tabx{padding:0 6px 0 12px} }

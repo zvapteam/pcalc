@@ -11,11 +11,18 @@
     DEFAULT_TAX: 9,
     DEFAULT_CONT: 20
   }, window.PCALC_CONFIG || {}); // настройки задаются в отдельном блоке Tilda «Блок 1 — настройки»
-  const APP_VERSION = '4.7';
+  const APP_VERSION = '5.0';
   /* ============================================== */
 
   const root = document.getElementById('pcalc');
   if (!root) return;
+  // шрифт подключается из самого калькулятора — блок на Tilda менять не нужно
+  if (!document.querySelector('link[data-pcalc-font]')) {
+    const fl = document.createElement('link');
+    fl.rel = 'stylesheet'; fl.dataset.pcalcFont = '1';
+    fl.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap';
+    document.head.appendChild(fl);
+  }
   const REMOTE = !!CONFIG.API_URL;
 
   /* ---------- демо-данные (ставки из вашей таблицы, услуги — примеры) ---------- */
@@ -36,7 +43,7 @@
   ];
 
   const UNITS = ['ч', 'сек', 'ролик', 'день', 'шт', 'проект'];
-  const HUES = [226, 14, 158, 272, 38, 192, 336, 96, 250, 0, 60, 300];
+  const HUES = [222, 8, 160, 268, 32, 195, 330, 140, 245, 350, 50, 290];
   const STATUSES = [
     { k: 'draft', n: 'Черновик', c: '#9a958a' },
     { k: 'sent', n: 'Отправлена', c: '#2a78d6' },
@@ -213,7 +220,7 @@
   const UI_KEY = 'pcalc-ui-v1';
   const ui = (() => { try { return JSON.parse(localStorage.getItem(UI_KEY) || '{}'); } catch (e) { return {}; } })();
   const saveUI = () => { try { localStorage.setItem(UI_KEY, JSON.stringify(ui)); } catch (e) { } };
-  S.sideW = Math.min(480, Math.max(240, ui.sideW || 300));
+  S.sideW = Math.min(480, Math.max(240, ui.sideW || 340));
   S.sideCollapsed = !!ui.collapsed; S.sideOpen = false;
   S.me = ui.name || '';
   S.presence = {}; S.base = {};
@@ -224,8 +231,13 @@
   const rateBy = name => S.rates.find(r => r.name.toLowerCase() === String(name).toLowerCase());
   const findSvc = id => S.current && S.current.services.find(s => s.id === id);
   const hueOf = id => { const p = cp(); return HUES[Math.max(0, p ? p.services.findIndex(s => s.id === id) : 0) % HUES.length]; };
-  const lineLight = i => 46 + (i % 5) * 8;
-  const segColor = (h, i) => `hsl(${h} 58% ${lineLight(i)}%)`;
+  // цвета в духе референса: насыщенный градиент у услуги, пастельная «радуга» у её позиций
+  const svcGrad = h => `linear-gradient(100deg, hsl(${h} 92% 62%) 0%, hsl(${(h + 14) % 360} 95% 75%) 100%)`;
+  const svcSolid = h => `hsl(${h} 85% 60%)`;
+  const lineHue = (h, i) => (h + i * 26) % 360;
+  const segColor = (h, i) => i === 0 ? svcGrad(h) : `linear-gradient(100deg, hsl(${lineHue(h, i)} 85% 87%) 0%, hsl(${(lineHue(h, i) + 14) % 360} 90% 92%) 100%)`;
+  const segText = (h, i) => i === 0 ? '#fff' : `hsl(${lineHue(h, i)} 55% 36%)`;
+  const segDot = (h, i) => i === 0 ? svcSolid(h) : `hsl(${lineHue(h, i)} 75% 72%)`;
   const famOf = x => x.family || x.id;
   function displayName(s, p) {
     p = p || cp();
@@ -752,7 +764,7 @@
     const total = projDirect(p);
     const segs = p.services.map(s => {
       const c = svcCost(s);
-      return `<button class="pc-seg" draggable="true" data-act="gotoSvc" data-sid="${s.id}" data-projseg="${s.id}" style="flex-grow:${total > 0 ? c : 1};background:hsl(${hueOf(s.id)} 56% 46%)" title="${esc(displayName(s))} — ${fmt(c)}. Перетащите, чтобы поменять порядок"><span>${esc(displayName(s))}</span><small data-live="projseg-${s.id}">${fmt(c)}</small></button>`;
+      return `<button class="pc-seg" draggable="true" data-act="gotoSvc" data-sid="${s.id}" data-projseg="${s.id}" style="flex-grow:${total > 0 ? c : 1};background:${svcGrad(hueOf(s.id))}" title="${esc(displayName(s))} — ${fmt(c)}. Перетащите, чтобы поменять порядок"><span>${esc(displayName(s))}</span><small data-live="projseg-${s.id}">${fmt(c)}</small></button>`;
     }).join('');
     return `<section class="pc-card">
         <div class="pc-label">Услуги и шаблоны — перетащите на шкалу проекта или нажмите</div>
@@ -772,7 +784,7 @@
       const lc = lineCost(l);
       const off = l.kind === 'spec' && !(num(l.rate) > 0);
       const val = l.kind === 'spec' ? `${fmtQ(l.qty)} ${esc(l.unit)} · ${fmt(lc)}` : fmt(lc);
-      return `<div class="pc-lseg${lineLight(i) >= 62 ? ' is-light' : ''}" draggable="true" data-lseg="${s.id}" data-lid="${l.id}" style="flex-grow:${c > 0 ? lc : 1};background:${segColor(h, i)}" title="${esc(l.name)}">
+      return `<div class="pc-lseg" draggable="true" data-lseg="${s.id}" data-lid="${l.id}" style="flex-grow:${c > 0 ? lc : 1};background:${segColor(h, i)};color:${segText(h, i)}" title="${esc(l.name)}">
         <span>${esc(l.name)}</span><small data-live="segval-${l.id}">${val}</small>
         <span class="pc-handle${off ? ' is-off' : ''}" data-sid="${s.id}" data-lid="${l.id}" title="${off ? 'Сначала укажите ставку' : 'Потяните, чтобы изменить'}"></span></div>`;
     }).join('');
@@ -797,7 +809,7 @@
     const posChips = S.rates.filter(r => !used.has(r.name.toLowerCase())).map(r => `<button class="pc-chip pc-chip-sm" data-act="addPos" data-sid="${s.id}" data-pos="${esc(r.name)}" title="${r.rate ? fmt(r.rate) + ' / ' + r.unit : 'ставка не указана'}">${IC.plus}${esc(r.name)}</button>`).join('');
     const dn = displayName(s);
     return `<section class="pc-card pc-svc pc-zone pc-zone-line" id="pc-svc-${pi}-${s.id}" data-svc="${s.id}">
-      <div class="pc-svc-head"><span class="pc-dot" style="background:hsl(${h} 56% 46%)"></span>
+      <div class="pc-svc-head"><span class="pc-dot" style="background:${svcGrad(h)}"></span>
         <input class="pc-svc-name" data-f="svcName" data-key="svc-${pi}-${s.id}" data-sid="${s.id}" value="${esc(s.name)}">${dn !== s.name ? `<span class="pc-svc-num">№ ${dn.slice(s.name.length + 1)}</span>` : ''}
         <div class="pc-svc-total" data-live="svctotal-${s.id}">${fmt(c)}</div>
         <button class="pc-icon" data-act="saveTpl" data-sid="${s.id}" title="Сохранить как шаблон услуги">${IC.save}</button>
@@ -811,8 +823,8 @@
   }
 
   const svcFin = (p, s) => finOf(p, svcCost(s));
-  const C = { direct: '#2a78d6', cont: '#eb6834', margin: '#1baf7a', tax: '#eda100' };
-  const HATCH = `repeating-linear-gradient(135deg, ${C.margin} 0 3px, rgba(27,175,122,.18) 3px 7px)`;
+  const C = { direct: 'linear-gradient(100deg,#2563ff,#5b8cff)', cont: 'linear-gradient(100deg,#ff6a4d,#ff9a7a)', margin: 'linear-gradient(100deg,#12b886,#48d6a8)', tax: 'linear-gradient(100deg,#f59f00,#ffc24d)' };
+  const HATCH = `repeating-linear-gradient(135deg, #12b886 0 3px, rgba(18,184,134,.16) 3px 7px)`;
 
   function finChart(f) {
     if (!(f.total > 0 || f.disc > 0)) return '';
@@ -839,7 +851,7 @@
     const f = finOf(p);
     const rows = p.services.map(s => {
       const x = svcFin(p, s);
-      return `<tr><td><span class="pc-dot" style="display:inline-block;margin-right:8px;vertical-align:-1px;background:hsl(${hueOf(s.id)} 56% 46%)"></span>${esc(displayName(s))}</td><td>${fmt(x.direct)}</td><td>${fmt(x.cont)}</td><td>${fmt(x.margin)}</td>${f.disc > 0 ? `<td>−${fmt(x.disc)}</td>` : ''}<td>${fmt(x.tax)}</td><td><b>${fmt(x.total)}</b></td></tr>`;
+      return `<tr><td><span class="pc-dot" style="display:inline-block;margin-right:8px;vertical-align:-1px;background:${svcGrad(hueOf(s.id))}"></span>${esc(displayName(s))}</td><td>${fmt(x.direct)}</td><td>${fmt(x.cont)}</td><td>${fmt(x.margin)}</td>${f.disc > 0 ? `<td>−${fmt(x.disc)}</td>` : ''}<td>${fmt(x.tax)}</td><td><b>${fmt(x.total)}</b></td></tr>`;
     }).join('');
     const kpi = (label, v, cls) => `<div class="pc-kpi${cls ? ' ' + cls : ''}"><div>${label}</div><b>${v}</b></div>`;
     return `<section class="pc-card"><div class="pc-fin-controls">
@@ -1738,7 +1750,7 @@
   const endSide = () => { if (!sideDrag) return; sideDrag = null; root.classList.remove('pc-resizing'); ui.sideW = S.sideW; saveUI(); };
   root.addEventListener('pointerup', endSide);
   root.addEventListener('pointercancel', endSide);
-  root.addEventListener('dblclick', e => { if (e.target.closest('[data-resizer]')) { S.sideW = 300; ui.sideW = 300; saveUI(); applySide(); } });
+  root.addEventListener('dblclick', e => { if (e.target.closest('[data-resizer]')) { S.sideW = 340; ui.sideW = 340; saveUI(); applySide(); } });
 
   async function askName(first) {
     const v = await modal(first ? 'Как вас подписывать?' : 'Ваше имя', [{ name: 'name', label: 'Имя', value: S.me, placeholder: 'Например, Евгений', required: true }], 'Сохранить',
