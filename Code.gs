@@ -13,13 +13,18 @@ const CONFIG = {
 
 const SHEET_PROJECTS = 'Проекты';
 const SHEET_FOLDERS = 'Папки';
-const P_HEAD = ['ID', 'Название', 'Дата сметы', 'Папка', 'В корзине', 'Прямые расходы, ₽', 'Итого для клиента, ₽', 'Обновлён', 'Данные (не редактировать вручную)', 'Статус', 'В архиве'];
+const P_HEAD = ['ID', 'Название', 'Дата сметы', 'Папка', 'В корзине', 'Прямые расходы, ₽', 'Итого для клиента, ₽', 'Обновлён', 'Данные (не редактировать вручную)', 'Статус', 'В архиве', 'Сводка (служебное)'];
+const COL_JSON = 9, COL_SUM = 12;          // большие данные сметы и короткая сводка для списка
+const SCHEMA_VERSION = '5';                // меняется, когда в таблицах появляются новые колонки
+const SRC_CACHE_SEC = 600;                 // ставки и шаблоны кэшируются на 10 минут
 const STATUS_NAMES = { draft: 'Черновик', sent: 'Отправлена', approved: 'Согласована', work: 'В работе', rejected: 'Отклонена' };
 const F_HEAD = ['ID', 'Название', 'Родитель', 'В архиве'];
 
 /* ---------- Запустить один раз из редактора ---------- */
 function setup() {
   ensureSheets_();
+  PropertiesService.getScriptProperties().setProperty('SCHEMA', SCHEMA_VERSION);
+  dropSourceCache_();
   const props = PropertiesService.getScriptProperties();
   if (!props.getProperty('API_KEY')) {
     props.setProperty('API_KEY', Utilities.getUuid().replace(/-/g, '').slice(0, 24));
@@ -89,18 +94,31 @@ function auth_(key) {
 
 /* ---------- Чтение ---------- */
 function bootstrap_() {
-  ensureSheets_(); // добавит колонки, появившиеся в новой версии
-  const src = SpreadsheetApp.openById(CONFIG.SOURCE_SPREADSHEET_ID);
-  const rates = readRates_(src);
+  ensureSchema_();
+  const src = sourceData_();
   return {
-    rates: rates,
-    services: readServices_(src, rates),
+    rates: src.rates,
+    services: src.services,
     folders: readFolders_(),
-    projects: readProjectRows_().map(r => {
-      try { return summary_(JSON.parse(r.json)); } catch (e) { return null; }
-    }).filter(Boolean)
+    projects: readIndex_().map(r => r.sum).filter(Boolean)
   };
 }
+
+/* Ставки и шаблоны из таблицы ставок — с кэшем, чтобы не открывать её на каждый запрос */
+function sourceData_() {
+  const cache = CacheService.getScriptCache();
+  const hit = cache.get('src');
+  if (hit) { try { return JSON.parse(hit); } catch (e) {} }
+  const src = SpreadsheetApp.openById(CONFIG.SOURCE_SPREADSHEET_ID);
+  const rates = readRates_(src);
+  const data = { rates: rates, services: readServices_(src, rates) };
+  try { cache.put('src', JSON.stringify(data), SRC_CACHE_SEC); } catch (e) {}
+  return data;
+}
+function dropSourceCache_() { CacheService.getScriptCache().remove('src'); }
+
+/* Если ставки поменяли вручную и нужно сразу увидеть их в калькуляторе — запустите эту функцию */
+function resetCache() { dropSourceCache_(); Logger.log('Кэш ставок и шаблонов сброшен'); }
 
 function readRates_(src) {
   const sh = src.getSheetByName(CONFIG.RATES_SHEET);
@@ -161,34 +179,51 @@ function readFolders_() {
     .map(r => ({ id: String(r[0]), name: String(r[1]), parent: String(r[2] || ''), archived: String(r[3]).toLowerCase() === 'да' }));
 }
 
-function readProjectRows_() {
+/* Список смет: читаются только колонки ID и короткой сводки, без больших данных */
+function readIndex_() {
   const sh = sheet_(SHEET_PROJECTS);
   const last = sh.getLastRow();
   if (last < 2) return [];
-  return sh.getRange(2, 1, last - 1, P_HEAD.length).getValues()
-    .map((r, i) => ({ row: i + 2, id: String(r[0]), json: String(r[8] || '') }))
-    .filter(x => x.id);
+  const ids = sh.getRange(2, 1, last - 1, 1).getValues();
+  const sums = sh.getRange(2, COL_SUM, last - 1, 1).getValues();
+  const out = [], fix = [];
+  ids.forEach((r, i) => {
+    const id = String(r[0] || '');
+    if (!id) return;
+    let sum = null;
+    try { sum = sums[i][0] ? JSON.parse(sums[i][0]) : null; } catch (e) {}
+    if (!sum) fix.push(i);
+    out.push({ row: i + 2, id: id, sum: sum });
+  });
+  // старые строки без сводки: один раз собираем её из полных данных
+  if (fix.length) {
+    const jsons = sh.getRange(2, COL_JSON, last - 1, 1).getValues();
+    fix.forEach(i => {
+      const r = out.find(x => x.row === i + 2);
+      try { r.sum = summary_(JSON.parse(jsons[i][0])); sh.getRange(i + 2, COL_SUM).setValue(JSON.stringify(r.sum)); } catch (e) {}
+    });
+  }
+  return out;
 }
+function findRow_(id) { return readIndex_().find(x => x.id === String(id)) || null; }
+function readJson_(row) { return JSON.parse(sheet_(SHEET_PROJECTS).getRange(row, COL_JSON).getValue()); }
 
 function getProject_(id) {
-  const r = readProjectRows_().find(x => x.id === String(id));
+  const r = findRow_(id);
   if (!r) throw new Error('Проект не найден');
-  return JSON.parse(r.json);
+  return readJson_(r.row);
 }
 
 /* ---------- Запись ---------- */
 function saveProject_(p, base, force) {
   if (!p || !p.id) throw new Error('Нет данных проекта');
-  const rows = readProjectRows_();
-  const ex = rows.find(x => x.id === p.id);
+  const ex = findRow_(p.id);
   // кто-то сохранил смету после того, как мы её открыли — спрашиваем пользователя
-  if (ex && !force && base) {
-    let theirs = null;
-    try { theirs = JSON.parse(ex.json); } catch (e) {}
-    if (theirs && theirs.updatedAt && theirs.updatedAt !== base) return { conflict: true, theirs: theirs };
+  if (ex && !force && base && ex.sum && ex.sum.updatedAt && ex.sum.updatedAt !== base) {
+    return { conflict: true, theirs: readJson_(ex.row) };
   }
   p.updatedAt = new Date().toISOString();
-  writeProject_(p, rows, folderNames_());
+  writeProject_(p, ex ? ex.row : 0, folderNames_());
   return { updatedAt: p.updatedAt };
 }
 
@@ -219,12 +254,12 @@ function presence_(b) {
 }
 
 function patchProject_(id, fields) {
-  const r = readProjectRows_().find(x => x.id === String(id));
+  const r = findRow_(id);
   if (!r) throw new Error('Проект не найден');
-  const p = JSON.parse(r.json);
+  const p = readJson_(r.row);
   applyPatch_(p, fields);
   p.updatedAt = new Date().toISOString();
-  writeProject_(p, [r], folderNames_());
+  writeProject_(p, r.row, folderNames_());
   return { updatedAt: p.updatedAt };
 }
 
@@ -235,30 +270,29 @@ function patchMany_(ids, fields) {
   const want = {}; ids.forEach(id => { want[String(id)] = true; });
   const fnames = folderNames_();
   const now = new Date().toISOString();
-  readProjectRows_().forEach(r => {
+  readIndex_().forEach(r => {
     if (!want[r.id]) return;
-    const p = JSON.parse(r.json);
+    const p = readJson_(r.row);
     applyPatch_(p, fields);
     p.updatedAt = now;
-    writeProject_(p, [r], fnames);
+    writeProject_(p, r.row, fnames);
   });
   return { updatedAt: now };
 }
 
-function writeProject_(p, rows, fnames) {
+function writeProject_(p, row, fnames) {
   const json = JSON.stringify(p);
   if (json.length > 49000) throw new Error('Проект слишком большой для одной ячейки (лимит Google Таблиц 50 000 символов)');
   const t = p.totals || {};
   const values = [[p.id, (p.name || '') + ' · v' + (p.version || 1), p.date || '', fnames[p.folderId] || '', p.trashed ? 'да' : '',
-    Math.round(t.direct || 0), Math.round(t.client || 0), new Date(), json, STATUS_NAMES[p.status] || STATUS_NAMES.draft, p.archived ? 'да' : '']];
+    Math.round(t.direct || 0), Math.round(t.client || 0), new Date(), json, STATUS_NAMES[p.status] || STATUS_NAMES.draft, p.archived ? 'да' : '',
+    JSON.stringify(summary_(p))]];
   const sh = sheet_(SHEET_PROJECTS);
-  const existing = rows.find(x => x.id === p.id);
-  const row = existing ? existing.row : sh.getLastRow() + 1;
-  sh.getRange(row, 1, 1, P_HEAD.length).setValues(values);
+  sh.getRange(row || sh.getLastRow() + 1, 1, 1, P_HEAD.length).setValues(values);
 }
 
 function deleteProject_(id) {
-  const r = readProjectRows_().find(x => x.id === String(id));
+  const r = findRow_(id);
   if (r) sheet_(SHEET_PROJECTS).deleteRow(r.row);
   return {};
 }
@@ -295,23 +329,26 @@ function deleteFolder_(id, mode) {
     if (i >= 0) sh.deleteRow(i + 2);
   }
   const fnames = folderNames_();
-  readProjectRows_().forEach(r => {
-    const p = JSON.parse(r.json);
-    if (p.folderId === id) { p.folderId = ''; if (mode === 'trash') p.trashed = true; writeProject_(p, [r], fnames); }
+  readIndex_().forEach(r => {
+    if (!r.sum || r.sum.folderId !== id) return;
+    const p = readJson_(r.row);
+    p.folderId = ''; if (mode === 'trash') p.trashed = true;
+    writeProject_(p, r.row, fnames);
   });
   return {};
 }
 
+/* Колонка «Папка» на листе проектов — одним запросом, а не построчно */
 function refreshFolderColumn_() {
-  const rows = readProjectRows_();
-  if (!rows.length) return;
-  const fnames = folderNames_();
   const sh = sheet_(SHEET_PROJECTS);
-  rows.forEach(r => {
-    let fid = '';
-    try { fid = JSON.parse(r.json).folderId || ''; } catch (e) {}
-    sh.getRange(r.row, 4).setValue(fnames[fid] || '');
-  });
+  const last = sh.getLastRow();
+  if (last < 2) return;
+  const fnames = folderNames_();
+  const byRow = {};
+  readIndex_().forEach(r => { byRow[r.row] = r.sum ? (fnames[r.sum.folderId] || '') : ''; });
+  const col = [];
+  for (let row = 2; row <= last; row++) col.push([byRow[row] != null ? byRow[row] : '']);
+  sh.getRange(2, 4, col.length, 1).setValues(col);
 }
 
 /* ---------- Шаблоны услуг (лист «Услуги» в таблице ставок) ---------- */
@@ -362,11 +399,13 @@ function saveTemplate_(t) {
     return r;
   });
   sh.getRange(sh.getLastRow() + 1, 1, rows.length, head.length).setValues(rows);
+  dropSourceCache_();
   return {};
 }
 
 function deleteTemplate_(name) {
   removeTemplateRows_(servicesSheet_(), name);
+  dropSourceCache_();
   return {};
 }
 
@@ -387,6 +426,13 @@ function ensureSheets_() {
       head.forEach((h, i) => { if (!String(cur[i]).trim()) sh.getRange(1, i + 1).setValue(h).setFontWeight('bold'); });
     }
   });
+}
+
+function ensureSchema_() {
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('SCHEMA') === SCHEMA_VERSION) return;
+  ensureSheets_();
+  props.setProperty('SCHEMA', SCHEMA_VERSION);
 }
 
 function sheet_(name) {
